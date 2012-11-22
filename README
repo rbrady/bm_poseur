@@ -1,0 +1,53 @@
+This is a CLI utility for creating a virtual bare metal cluster on an isolated bridge network. 
+
+Its intended to be used by devstack to test and work with faux baremetal clusters. 
+
+Available Commands:
+
+create:
+creates vms!
+
+clean_up:
+Destroys the bridge and all vm's that were created
+
+destroy_bridge:
+destroys a bridge
+
+build_bridge:
+builds a bridge 
+
+get-macs:
+returns json of the mac address of vms that start with --prefix
+
+start_all:
+starts all the vms with --prefix
+
+stop_all:
+stops all the vms with --prefix
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --verbose, -v
+  --silent, -s
+  --vms [{1-1000}]
+                        Number of vm's you wish to create.(defaults=1).
+  --arch [{i386,i686,x86_64}]
+                        (defaults=x86_64).
+  --engine [{qemu,kvm}]
+                        (defaults=kvm).
+  --max-mem [MAX_MEM]   (defaults=524000).
+  --cpus [{1,2,4,8}]
+                        (defaults=1)
+  --qemu [QEMU]         qemu address for lib virt (qemu:///system)
+  --prefix [PREFIX]     base name of instances (defualt=bm_poseur_)
+  --image-path [IMAGE_PATH]
+                        path to store disk images of running instances
+  --template-disk [TEMPLATE_DISK]
+                        name of empty qcow image file in lib.
+  --template-xml [TEMPLATE_XML]
+                        name of template xml file in lib.
+  --bridge [BRIDGE]     The name to give the bridge. (defautl=br999)
+  --bridge-port [BRIDGE_PORT]
+                        Add a port (such as eth2) to the bridge.
+  --network-config NETWORK_CONFIG, -f NETWORK_CONFIG
+                        Network config file to extend.
