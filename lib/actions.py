@@ -224,7 +224,7 @@ class actions(argparse.Action):
             name = "%s%s" % (self.params.prefix , str(i))
             image = "%s%s.qcow2" % (self.params.image_path, name)
 
-            cmd = "kvm-img create -f qcow %s 2G" % (image)
+            cmd = "kvm-img create -f qcow2 %s 2G" % (image)
             call(cmd, shell=True)
 
             self.conn.defineXML(self.load_xml(name,image))
