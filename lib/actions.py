@@ -120,7 +120,8 @@ class actions(argparse.Action):
     
     
     def is_already_bridge(self):
-        """ returns t/f if a bridge exists or not """
+        """ returns t/f if a bridge exists or not 
+        TODO: Make this smarter.. figure out a way to probe this and probe ifconfig """
         network_file = open(self.params.network_config, 'r').read()
         if network_file.find(self.params.bridge) == -1: 
             return False
@@ -159,7 +160,7 @@ class actions(argparse.Action):
             self._print('bring bridge online')
             call('ifup %s ' % self.params.bridge , shell=True)
         else:
-            print('bridge already exists')    
+            print('bridge: %s already exists. ' % self.params.bridge)    
     
     
     def load_xml(self, name, image):

@@ -64,8 +64,7 @@ def main():
                     config can be considered unfriendly. Passing -y will trigger the 
                     demo mode where a local bridge called 'br999' with no external
                     ports connected is created, which as many 'bare metal' virtual
-                    machines as you want can be connected to - this is the device that
-                    configure-bootstrap-vm uses by default.
+                    machines as you want can be connected to.
                     
                     If you are provising actual hardware, you will want to add actual
                     physical ports (e.g. eth1) by passing '--with-port=eth1' to this
