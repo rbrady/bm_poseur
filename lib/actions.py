@@ -227,9 +227,9 @@ class actions(argparse.Action):
 
         for i in range(self.params.vms):
             name = "%s%s" % (self.params.prefix , str(i))
-            image = "%s%s.qcow2" % (self.params.image_path, name)
+            image = "%s%s.img" % (self.params.image_path, name)
             call("sudo rm -f %s" % image, shell=True)
-            cmd = "kvm-img create -f qcow2 %s %s" % (image, self.params.disk_size)
+            cmd = "kvm-img create -f raw %s %s" % (image, self.params.disk_size)
             call(cmd, shell=True)
 
             self.conn.defineXML(self.load_xml(name,image))
