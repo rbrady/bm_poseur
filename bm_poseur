@@ -26,7 +26,7 @@ basedir = os.path.dirname(__file__)
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-        description=dedent("""
+        description=dedent("""\
                             This is a CLI utility to provide devstack with virtualized resources
                             so that the baremetal hypervisor can be exercised, without having
                             actual physical hardware available.
@@ -50,7 +50,8 @@ def main():
                                returns MAC addresses of VMs that have been started
 
                             """),
-        epilog=dedent("""Usage:
+        epilog=dedent("""\
+                    Usage:
 
                     BareMetal Bridge:
                     Configure access to the virtual baremetal LAN for the bootstrap VM.
@@ -109,9 +110,9 @@ def main():
     parser.add_argument('--image-path', nargs='?',
           default=settings.IMAGE_PATH,
           help='Location to store virtual disk images. Default: %s' % settings.IMAGE_PATH)
-    parser.add_argument('--template-disk', nargs='?',
-          default=settings.TEMPLATE_DISK,
-          help='Template disk image. Default: %s' % settings.TEMPLATE_DISK)
+    parser.add_argument('--disk-size', nargs='?',
+          default=settings.DISK_SIZE,
+          help='Disk image size. Default: %s' % settings.DISK_SIZE)
     parser.add_argument('--template-xml', nargs='?',
           default=settings.TEMPLATE_XML,
           help='Template XML file. Default: %s' % settings.TEMPLATE_XML)

@@ -42,8 +42,8 @@ optional arguments:
   --prefix [PREFIX]     base name of instances (defualt=bm_poseur_)
   --image-path [IMAGE_PATH]
                         path to store disk images of running instances
-  --template-disk [TEMPLATE_DISK]
-                        name of empty qcow image file in lib.
+  --disk-size [DISK_SIZE]
+                        size of qcow disk images.
   --template-xml [TEMPLATE_XML]
                         name of template xml file in lib.
   --bridge [BRIDGE]     The name to give the bridge. (defautl=br999)

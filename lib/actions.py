@@ -20,11 +20,16 @@ import argparse
 import time
 import os.path
 import sys
-from subprocess import call
+import subprocess
 from textwrap import dedent
 import re
 from lxml import objectify
 from collections import defaultdict
+
+def call(*args, **kwargs):
+    """subprocess.call with error checking."""
+    assert not subprocess.call(*args, **kwargs)
+
 
 class actions(argparse.Action):
     """ david please comment this """
@@ -68,7 +73,6 @@ class actions(argparse.Action):
         for command in self.params.command:
             if command in actions:
                 actions[command]()
-
 
     def _print(self, output, verbose=False):
         """ print wrapper so -v and -s can be respected """
@@ -167,11 +171,12 @@ class actions(argparse.Action):
 
         self._print('bring bridge online')
         call('ifup %s ' % self.params.bridge , shell=True)
-
-        self._print('Assigning IP %s to bridge' % self.params.bridge_ip)
-        call('ip addr add dev %s local %s/24 scope global' %
-               (self.params.bridge, self.params.bridge_ip),
-               shell=True)
+        if self.params.bridge_ip and self.params.bridge_ip.lower() != 'none':
+            # XXX: This should change the stanza rather than calling ip
+            self._print('Assigning IP %s to bridge' % self.params.bridge_ip)
+            call('ip addr add dev %s local %s/24 scope global' %
+                   (self.params.bridge, self.params.bridge_ip),
+                   shell=True)
 
         #idx=self.params.bridge_ip.rindex('.')
         #net=self.params.bridge_ip[0:idx] + ".0"
@@ -223,8 +228,8 @@ class actions(argparse.Action):
         for i in range(self.params.vms):
             name = "%s%s" % (self.params.prefix , str(i))
             image = "%s%s.qcow2" % (self.params.image_path, name)
-
-            cmd = "kvm-img create -f qcow2 %s 2G" % (image)
+            call("sudo rm -f %s" % image, shell=True)
+            cmd = "kvm-img create -f qcow2 %s %s" % (image, self.params.disk_size)
             call(cmd, shell=True)
 
             self.conn.defineXML(self.load_xml(name,image))
@@ -233,8 +238,8 @@ class actions(argparse.Action):
         cmd = 'chmod 644 %s*' % self.params.image_path
         return_code = call(cmd, shell=True)
 
-        cmd = 'chown libvirt-qemu %s*' % self.params.image_path
-        return_code = call(cmd, shell=True)
+        cmd = 'sudo chown libvirt-qemu %s*' % self.params.image_path
+        call(cmd, shell=True)
 
         self._print('%s vms have been created!' % str(self.params.vms))
 
