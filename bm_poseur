@@ -77,11 +77,7 @@ def main():
     parser.add_argument('--verbose', '-v', action='count')
     parser.add_argument('--silent', '-s', action='store_true')
 
-    # actions
-    parser.add_argument('command',  nargs='+', action=actions,
-          help="Command to execute. ",
-          choices=['create-vm','destroy-vm','create-bridge','destroy-bridge','get-macs'] )
-
+    
     # all paramaters can be overridden
 
     parser.add_argument('--vms', nargs='?', type=int,
@@ -90,7 +86,7 @@ def main():
     parser.add_argument('--arch', nargs='?',
           default=settings.ARCH,
           help='CPU architecture for the BM. Default: %s' % settings.ARCH,
-          choices=['i386','i686','x86_64'])
+          choices=['i686','x86_64'])
     parser.add_argument('--engine', nargs='?',
           default=settings.ENGINE,
           help='Default: %s' % settings.ENGINE,
@@ -116,6 +112,9 @@ def main():
     parser.add_argument('--template-xml', nargs='?',
           default=settings.TEMPLATE_XML,
           help='Template XML file. Default: %s' % settings.TEMPLATE_XML)
+    
+    
+    
     parser.add_argument('--bridge', nargs='?',
           default=settings.BRIDGE,
           help='Name of network bridge to create. Default: %s' % settings.BRIDGE)
@@ -125,14 +124,22 @@ def main():
     parser.add_argument('--bridge-port', nargs='?', action="append",
           help='Network port(s) to add to the bridge. Optional.',
           default=[]) # Yes its mutable, don't reuse the parser.
+    
     parser.add_argument('--network-config','-f',
           default='/etc/network/interfaces',
           help='Network config file to extend.')
+
+
+
 
     #parser.add_argument('-y',
     #     default=False, action='store_true',
     #     help='The interface which bare metal nodes will be connected to.')
 
+    # actions
+    parser.add_argument('command',  nargs='+', action=actions,
+          help="Command to execute. ",
+          choices=['create-vm','destroy-vm','create-bridge','destroy-bridge','get-macs'] )
 
     args = parser.parse_args()
 

@@ -24,13 +24,15 @@ class settings(object):
     ARCH = "x86_64"
     ENGINE = "kvm"
     MAX_MEM = "524000"
+    BOOTSTRAP_IMAGE = "/opt/stack/data/images/bootstrap.qcow2"
     CPUS = "1"
     BRIDGE = "br99"
     BRIDGE_IP = '192.0.2.1'
+    
     QEMU = "qemu:///system"
     PREFIX = 'baremetal_'
     IMAGE_PATH = '/opt/stack/data/bm_poseur/'
-    DISK_SIZE = "2G"
+    DISK_SIZE = "20G"
     START_DELAY = 2
     TEMPLATE_XML = "%s/template.xml" % os.path.dirname(os.path.abspath(__file__))
 

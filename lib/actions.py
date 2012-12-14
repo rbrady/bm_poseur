@@ -52,7 +52,7 @@ class actions(argparse.Action):
                                         # bm_poseur bridge
                                         auto %(bridge)s
                                         iface %(bridge)s inet manual
-                                          bridge_ports %(ports)s
+                                          bridge_ports %(ports)s   #bmposeur
 
                                         """)
 
@@ -84,16 +84,19 @@ class actions(argparse.Action):
 
 
     def get_macs(self):
-        """ This returns the mac addresses  """
+        """ This returns the mac addresses  xx:xx:xx,yy:yy:yy aa:aa:aa,bb:bb:bb """
         output=''
         domains=self.conn.listDefinedDomains()
 
         for domain in domains:
             if not domain.find(self.params.prefix) == -1:
                _xml = objectify.fromstring(self.conn.lookupByName(domain).XMLDesc(0))
-               output += "%s " % _xml.devices.interface.mac.attrib.get("address")
-
+               
+               output += "%s" % _xml.devices.interface[0].mac.attrib.get("address")
+               output += ",%s " % _xml.devices.interface[1].mac.attrib.get("address")
+               
         print '%s' % output.strip(' ')
+
 
     def destroy_bridge(self):
         """ This destroys the bridge """
