@@ -9,11 +9,15 @@ from lib.settings import settings
 from lib.args import get_parser
 
 class FakeConn(object):
-    def defineXML(self, *args, **kwargs):
+    def defineXML(self, arg):
         pass
 
 class FakeLibvirtOpen(object):
-    def __call__(self, *args, **kwargs):
+    def __init__(self, testcase):
+        self.testcase = testcase
+
+    def __call__(self, qemu_path):
+        self.testcase.assertEquals(settings.QEMU, qemu_path)
         return FakeConn()
 
 class FakeCheckCall(object):
@@ -29,7 +33,7 @@ class TestActions(TestCase):
     def test_create_vms(self):
         parser = get_parser()
         argv = self.argv('create-vm')
-        mock_libv = FakeLibvirtOpen()
+        mock_libv = FakeLibvirtOpen(self)
         mock_call = FakeCheckCall()
         self.useFixture(fixtures.MonkeyPatch('libvirt.open', mock_libv))
         self.useFixture(fixtures.MonkeyPatch('subprocess.check_call', mock_call))
