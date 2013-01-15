@@ -16,6 +16,7 @@
 #    under the License.
 
 import libvirt
+from libvirt import libvirtError
 import argparse
 import time
 import os.path
@@ -208,9 +209,20 @@ class actions(object):
             image = "%s%s.img" % (self.params.image_path, name)
             subprocess.check_call("sudo rm -f %s" % image, shell=True)
             cmd = "kvm-img create -f raw %s %s" % (image, self.params.disk_size)
-            subprocess.check_call(cmd, shell=True)
+            try:
+                subprocess.check_call(cmd, shell=True)
+            except subprocess.CalledProcessError:
+                if self.params.ignore_existing:
+                    continue
+                raise
 
-            self.conn.defineXML(self.load_xml(name,image))
+            try:
+                self.conn.defineXML(self.load_xml(name,image))
+            except libvirtError:
+                if self.params.ignore_existing:
+                    continue
+                raise
+                
 
         self._print('Fixing permissions and ownership', verbose=True)
         cmd = 'chmod 644 %s*' % self.params.image_path

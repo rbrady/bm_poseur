@@ -125,6 +125,9 @@ def get_parser(actions):
 
     subparsers = parser.add_subparsers()
     parser_create_vm = subparsers.add_parser('create-vm')
+    parser_create_vm.add_argument('--ignore-existing', default=False,
+                                  action='store_true',
+                                  help='Ignore problems caused by existing vms')
     parser_create_vm.set_defaults(func=actions.create_vm)
     parser_destroy_vm = subparsers.add_parser('destroy-vm')
     parser_destroy_vm.set_defaults(func=actions.destroy_vm)
