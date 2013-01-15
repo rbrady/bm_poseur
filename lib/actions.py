@@ -41,6 +41,9 @@ class actions(object):
     def __init__(self):
         self._conn = None
         self.params = None
+        def _my_err_(ctx, error):
+            ctx._print(error, verbose=True)
+        libvirt.registerErrorHandler(_my_err_, self)
 
     @property
     def conn(self):
