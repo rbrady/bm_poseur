@@ -204,24 +204,29 @@ class actions(object):
         if not os.path.isdir(self.params.image_path):
                 os.makedirs(self.params.image_path)
 
+        n_created = 0
         for i in range(self.params.vms):
             name = "%s%s" % (self.params.prefix , str(i))
             image = "%s%s.img" % (self.params.image_path, name)
+            if self.params.ignore_existing:
+                try:
+                    self.conn.lookupByName(name)
+                except libvirtError:
+                    pass
+                else:
+                    self._print('ignoring existing %s' % name)
+                    continue
+                
             subprocess.check_call("sudo rm -f %s" % image, shell=True)
             cmd = "kvm-img create -f raw %s %s" % (image, self.params.disk_size)
-            try:
-                subprocess.check_call(cmd, shell=True)
-            except subprocess.CalledProcessError:
-                if self.params.ignore_existing:
-                    continue
-                raise
+            subprocess.check_call(cmd, shell=True)
 
             try:
                 self.conn.defineXML(self.load_xml(name,image))
             except libvirtError:
-                if self.params.ignore_existing:
-                    continue
                 raise
+            else:
+                n_created += 1
                 
 
         self._print('Fixing permissions and ownership', verbose=True)
@@ -231,7 +236,7 @@ class actions(object):
         cmd = 'sudo chown libvirt-qemu %s*' % self.params.image_path
         subprocess.check_call(cmd, shell=True)
 
-        self._print('%s vms have been created!' % str(self.params.vms))
+        self._print('%s vms have been created!' % n_created)
 
 
     def stop_all(self):
