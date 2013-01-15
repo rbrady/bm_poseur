@@ -29,11 +29,14 @@ class TestActions(TestCase):
         tdir = self.useFixture(fixtures.TempDir()).path
         return ['bm_poseur', '--image-path', tdir, cmd]
 
-    def test_create_vms(self):
-        parser = get_parser()
+    def test_create_vm(self):
+        aobj = actions()
+        parser = get_parser(aobj)
         argv = self.argv('create-vm')
         mock_libv = FakeLibvirtOpen(self)
         mock_call = FakeCheckCall()
         self.useFixture(fixtures.MonkeyPatch('libvirt.open', mock_libv))
         self.useFixture(fixtures.MonkeyPatch('subprocess.check_call', mock_call))
-        parser.parse_args(argv[1:])
+        args = parser.parse_args(argv[1:])
+        aobj.set_params(args)
+        args.func()

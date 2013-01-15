@@ -26,48 +26,27 @@ import re
 from lxml import objectify
 from collections import defaultdict
 
-class actions(argparse.Action):
-    """ david please comment this """
-    # vm reference object
-    vms = {}
-    settings = None
-    conn = None
-    xml_template = None
+BRIDGE_TEMPLATE = dedent(  """\
 
-    def __call__(self, parser, params, values, option_string=None, **kwargs):
-        """Triggered by -c command line argument """
-        self.params = params
-        setattr(self.params, self.dest, values)
+                           # bm_poseur bridge
+                           auto %(bridge)s
+                           iface %(bridge)s inet manual
+                             bridge_ports %(ports)s   #bmposeur
 
-        self._print(self.params, verbose=True)
+                           """)
 
-        self.conn=libvirt.open(self.params.qemu)
-        self.bridge_template = dedent(  """\
 
-                                        # bm_poseur bridge
-                                        auto %(bridge)s
-                                        iface %(bridge)s inet manual
-                                          bridge_ports %(ports)s   #bmposeur
+class actions(object):
+    def __init__(self):
+        self._conn = None
+        self.params = None
 
-                                        """)
-
-        # action function mapping
-        actions = { 'create-vm' : self.create_vms,
-                    'destroy-vm' : self.destroy_vms,
-                    'create-bridge' : self.create_bridge,
-                    'destroy-bridge' : self.destroy_bridge,
-                    'get-macs' : self.get_macs,
-                    'start-all' : self.start_all,
-                    'stop-all' : self.stop_all }
-
-        if len(self.params.command) > 1:
-            print "Please only use one command at a time!\n\n"
-            parser.print_help()
-            sys.exit(1)
-
-        for command in self.params.command:
-            if command in actions:
-                actions[command]()
+    @property
+    def conn(self):
+        assert self.params
+        if self._conn is None:
+            self._conn=libvirt.open(self.params.qemu)
+        return self._conn
 
     def _print(self, output, verbose=False):
         """ print wrapper so -v and -s can be respected """
@@ -77,6 +56,8 @@ class actions(argparse.Action):
             elif verbose is True and self.params.verbose > 0:
                 print(output)
 
+    def set_params(self, params):
+        self.params = params
 
     def get_macs(self):
         """ This returns the mac addresses  xx:xx:xx,yy:yy:yy aa:aa:aa,bb:bb:bb """
@@ -107,7 +88,7 @@ class actions(argparse.Action):
 
         network_file = open(self.params.network_config, 'r').read()
         ports = " ".join(self.params.bridge_port) or "none"
-        to_remove = self.bridge_template % dict(bridge=self.params.bridge, ports=ports)
+        to_remove = BRIDGE_TEMPLATE % dict(bridge=self.params.bridge, ports=ports)
         to_remove = to_remove.strip().splitlines()
 
         self._print("clearing bridge", True)
@@ -153,7 +134,7 @@ class actions(argparse.Action):
 
         with file(self.params.network_config, 'ab') as outf:
             outf.seek(0, 2)
-            outf.write(self.bridge_template % dict(bridge=self.params.bridge, ports=ports))
+            outf.write(BRIDGE_TEMPLATE % dict(bridge=self.params.bridge, ports=ports))
 
         self._print("  Wrote new stanza for bridge interface %s." %
             self.params.bridge, verbose=True)
@@ -187,8 +168,7 @@ class actions(argparse.Action):
         """Loads the xml file and evals it with the right settings"""
         self._print('load_xml called')
 
-        if not self.xml_template:
-            template_xml = open(self.params.template_xml, 'r').read()
+        template_xml = open(self.params.template_xml, 'r').read()
 
         return template_xml % dict( engine=self.params.engine,
                                     arch=self.params.arch,
@@ -199,7 +179,7 @@ class actions(argparse.Action):
                                     image=image )
 
 
-    def destroy_vms(self):
+    def destroy_vm(self):
         """ clears out vms """
         self._print('Deleting VMs')
 
@@ -216,7 +196,7 @@ class actions(argparse.Action):
         subprocess.check_call(cmd, shell=True)
 
 
-    def create_vms(self):
+    def create_vm(self):
         """ creates the first vm """
         self._print('create called')
 

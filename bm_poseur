@@ -27,9 +27,12 @@ basedir = os.path.dirname(__file__)
 
 
 def main():
-    parser = get_parser()
+    aobj = actions()
+    parser = get_parser(aobj)
 
     args = parser.parse_args()
+    aobj.set_params(args)
+    args.func()
 
 
 if __name__ == '__main__':

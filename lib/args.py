@@ -17,9 +17,8 @@ import argparse
 from textwrap import dedent
 
 from settings import settings
-from actions import actions
 
-def get_parser():
+def get_parser(actions):
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
         description=dedent("""\
                             This is a CLI utility to provide devstack with virtualized resources
@@ -124,15 +123,16 @@ def get_parser():
           default='/etc/network/interfaces',
           help='Network config file to extend.')
 
-
-
-    #parser.add_argument('-y',
-    #     default=False, action='store_true',
-    #     help='The interface which bare metal nodes will be connected to.')
-
-    # actions
-    parser.add_argument('command',  nargs='+', action=actions,
-          help="Command to execute. ",
-          choices=['create-vm','destroy-vm','create-bridge','destroy-bridge','get-macs'] )
+    subparsers = parser.add_subparsers()
+    parser_create_vm = subparsers.add_parser('create-vm')
+    parser_create_vm.set_defaults(func=actions.create_vm)
+    parser_destroy_vm = subparsers.add_parser('destroy-vm')
+    parser_destroy_vm.set_defaults(func=actions.destroy_vm)
+    parser_create_bridge = subparsers.add_parser('create-bridge')
+    parser_create_bridge.set_defaults(func=actions.create_bridge)
+    parser_destroy_bridge = subparsers.add_parser('destroy-bridge')
+    parser_destroy_bridge.set_defaults(func=actions.destroy_bridge)
+    parser_get_macs = subparsers.add_parser('get-macs')
+    parser_get_macs.set_defaults(func=actions.get_macs)
 
     return parser
