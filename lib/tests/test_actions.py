@@ -1,7 +1,6 @@
 import fixtures
 import libvirt
 from testtools import TestCase
-import tempfile
 import subprocess
 
 from lib import actions
