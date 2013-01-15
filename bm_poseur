@@ -25,17 +25,11 @@ from lib.args import get_parser
 
 basedir = os.path.dirname(__file__)
 
+
 def main():
     parser = get_parser()
 
     args = parser.parse_args()
-
-    # validate input
-    #option_given = not (args.c == None)
-
-    #if not option_given:
-    #    parser.print_help()
-    #    sys.exit(1)
 
 
 if __name__ == '__main__':
