@@ -93,7 +93,11 @@ class actions(argparse.Action):
                _xml = objectify.fromstring(self.conn.lookupByName(domain).XMLDesc(0))
                
                output += "%s" % _xml.devices.interface[0].mac.attrib.get("address")
-               output += ",%s " % _xml.devices.interface[1].mac.attrib.get("address")
+               try:
+                  output += ",%s " % _xml.devices.interface[1].mac.attrib.get("address")
+               except IndexError:
+                  output += " "
+
                
         print '%s' % output.strip(' ')
 
