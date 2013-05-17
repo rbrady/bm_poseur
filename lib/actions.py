@@ -19,6 +19,7 @@ import libvirt
 import argparse
 import time
 import os.path
+import pwd
 import sys
 import subprocess
 from textwrap import dedent
@@ -224,6 +225,12 @@ class actions(argparse.Action):
         cmd = "rm -rf %s*" % self.params.image_path
         call(cmd, shell=True)
 
+    def user_exist(self, user):
+        try:
+            pwd.getpwnam(user)
+            return True
+        except KeyError:
+            return False
 
     def create_vms(self):
         """ creates the first vm """
@@ -245,8 +252,17 @@ class actions(argparse.Action):
         cmd = 'chmod 644 %s*' % self.params.image_path
         return_code = call(cmd, shell=True)
 
-        cmd = 'sudo chown libvirt-qemu %s*' % self.params.image_path
-        call(cmd, shell=True)
+        qemu_user=""
+        if self.user_exist("libvirt-qemu"): # Debian
+            qemu_user="libvirt-qemu"
+        if self.user_exist("qemu"): # RedHat
+            qemu_user="qemu"
+        else:
+            self._print("WARNING: QEMU user not found.")
+
+        if qemu_user:
+            cmd = 'sudo chown %s %s*' % (qemu_user, self.params.image_path)
+            call(cmd, shell=True)
 
         self._print('%s vms have been created!' % str(self.params.vms))
 
