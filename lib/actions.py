@@ -24,6 +24,7 @@ import subprocess
 from textwrap import dedent
 import re
 from lxml import objectify
+from lxml import etree
 from collections import defaultdict
 
 def call(*args, **kwargs):
@@ -47,14 +48,6 @@ class actions(argparse.Action):
         self._print(self.params, verbose=True)
 
         self.conn=libvirt.open(self.params.qemu)
-        self.bridge_template = dedent(  """\
-
-                                        # bm_poseur bridge
-                                        auto %(bridge)s
-                                        iface %(bridge)s inet manual
-                                          bridge_ports %(ports)s   #bmposeur
-
-                                        """)
 
         # action function mapping
         actions = { 'create-vm' : self.create_vms,
@@ -91,42 +84,27 @@ class actions(argparse.Action):
         for domain in domains:
             if not domain.find(self.params.prefix) == -1:
                _xml = objectify.fromstring(self.conn.lookupByName(domain).XMLDesc(0))
-               
+
                output += "%s" % _xml.devices.interface[0].mac.attrib.get("address")
                try:
                   output += ",%s " % _xml.devices.interface[1].mac.attrib.get("address")
                except IndexError:
                   output += " "
 
-               
+
         print '%s' % output.strip(' ')
 
 
     def destroy_bridge(self):
         """ This destroys the bridge """
-        self._print("reading network config file", True)
+        if not self.is_already_bridge():
+            self._print('%s network not found' % self.params.bridge)
+            return
 
-        # remove the route first
-        idx=self.params.bridge_ip.rindex('.')
-        net=self.params.bridge_ip[0:idx] + ".0"
-        call('route del -net %s netmask 255.255.255.0' % net, shell=True)
-
-        # take the bridge down
-        call('ifdown %s' % self.params.bridge, shell=True)
-
-        network_file = open(self.params.network_config, 'r').read()
-        ports = " ".join(self.params.bridge_port) or "none"
-        to_remove = self.bridge_template % dict(bridge=self.params.bridge, ports=ports)
-        to_remove = to_remove.strip().splitlines()
-
-        self._print("clearing bridge", True)
-        for line in to_remove:
-            network_file = network_file.replace(line,'')
-
-        self._print("writing changed network config file", True)
-        outf = open( self.params.network_config , "w")
-        outf.write(network_file.strip())
-        outf.close()
+        network = self.conn.networkLookupByName(self.params.bridge)
+        if network.isActive():
+            network.destroy()
+        network.undefine()
 
         self._print("removing dnsmasq exclusion file", True)
         try:
@@ -138,12 +116,30 @@ class actions(argparse.Action):
 
     def is_already_bridge(self):
         """ returns t/f if a bridge exists or not """
-        network_file = open(self.params.network_config, 'r').read()
-        if network_file.find(self.params.bridge) == -1:
-            return False
-        else:
-            return True
+        #listNetworks = list the active networks
+        #listDefinedNetworks = list the inactive networks
+        all_networks = self.conn.listNetworks() + \
+                       self.conn.listDefinedNetworks()
+        return self.params.bridge in all_networks
 
+    def build_bridge_xml(self):
+        """ """
+        root = etree.Element('network')
+        name_el = etree.SubElement(root, 'name')
+        name_el.text = self.params.bridge
+
+        stp = "on" if len(self.params.bridge_port) > 1 else "off"
+        bridge_el = etree.SubElement(root, 'bridge',
+                                     name=self.params.bridge,
+                                     stp=stp)
+
+        if self.params.bridge_ip and self.params.bridge_ip.lower() != 'none':
+            etree.SubElement(root, 'ip', address=self.params.bridge_ip)
+
+        for p in self.params.bridge_port:
+            etree.SubElement(root, 'forward', mode='route', dev=p)
+
+        return etree.tostring(root)
 
     def create_bridge(self):
         """ this creates a bridge """
@@ -152,20 +148,10 @@ class actions(argparse.Action):
             print('bridge already exists')
             return
 
-        self._print("Creating bridge interface %(bridge)s." %
-            dict(bridge=self.params.bridge), verbose=True)
-
-        ports = " ".join(self.params.bridge_port) or "none"
-
-        self._print("   Writing new stanza for bridge interface %(bridge)s." %
-            dict(bridge=self.params.bridge), verbose=True)
-
-        with file(self.params.network_config, 'ab') as outf:
-            outf.seek(0, 2)
-            outf.write(self.bridge_template % dict(bridge=self.params.bridge, ports=ports))
-
-        self._print("  Wrote new stanza for bridge interface %s." %
+        self._print("  Creating a new bridge interface %s." %
             self.params.bridge, verbose=True)
+
+        self.conn.networkDefineXML(self.build_bridge_xml())
 
         self._print("   Writing dnsmasq.d exclusion file.", verbose=True)
 
@@ -177,13 +163,9 @@ class actions(argparse.Action):
             self.params.bridge, verbose=True)
 
         self._print('bring bridge online')
-        call('ifup %s ' % self.params.bridge , shell=True)
-        if self.params.bridge_ip and self.params.bridge_ip.lower() != 'none':
-            # XXX: This should change the stanza rather than calling ip
-            self._print('Assigning IP %s to bridge' % self.params.bridge_ip)
-            call('ip addr add dev %s local %s/24 scope global' %
-                   (self.params.bridge, self.params.bridge_ip),
-                   shell=True)
+        network = self.conn.networkLookupByName(self.params.bridge)
+        network.setAutostart(True)
+        network.create()
 
         #idx=self.params.bridge_ip.rindex('.')
         #net=self.params.bridge_ip[0:idx] + ".0"
