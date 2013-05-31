@@ -175,6 +175,21 @@ class actions(argparse.Action):
         #      (net, self.params.bridge),
         #      shell=True)
 
+    def get_emulator(self):
+        """
+        Return the right emulator. RedHat and Debian based systems have
+        different executable names.
+        """
+        if os.path.exists("/usr/bin/kvm"): # Debian
+            return "/usr/bin/kvm"
+        elif os.path.exists("/usr/bin/qemu-kvm"): # Redhat
+            return "/usr/bin/qemu-kvm"
+        else:
+            self._print("ERROR: Emulator not found. You need to have either "
+                        "kvm or qemu-kvm installed before continue.")
+            sys.exit(1)
+
+
     def load_xml(self, name, image):
         """Loads the xml file and evals it with the right settings"""
         self._print('load_xml called')
@@ -188,6 +203,7 @@ class actions(argparse.Action):
                                     name=name,
                                     max_mem=self.params.max_mem,
                                     cpus=self.params.cpus,
+                                    emulator=self.get_emulator(),
                                     image=image )
 
 
@@ -225,7 +241,7 @@ class actions(argparse.Action):
             name = "%s%s" % (self.params.prefix , str(i))
             image = "%s%s.img" % (self.params.image_path, name)
             call("sudo rm -f %s" % image, shell=True)
-            cmd = "kvm-img create -f raw %s %s" % (image, self.params.disk_size)
+            cmd = "qemu-img create -f raw %s %s" % (image, self.params.disk_size)
             call(cmd, shell=True)
 
             self.conn.defineXML(self.load_xml(name,image))
