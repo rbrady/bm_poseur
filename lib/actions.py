@@ -15,9 +15,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import paramiko
+import libvirt
 import argparse
+import time
 import os.path
+import pwd
 import sys
 import subprocess
 from textwrap import dedent
@@ -38,38 +40,6 @@ class actions(argparse.Action):
     settings = None
     conn = None
     xml_template = None
-    hostname = "127.0.0.1"
-    password = ""
-    keyfilename='C:\Users\krelle\Documents\ssh_keys\id_rsa_hp_key.priv'
-    username = "krelle"
-    port = 22
-
-    def _format_mac(self, rawmac):
-        """ Returns rawmac with colon every two chars. """ 
-        return ':'.join(rawmac[i:i+2] for i in xrange(0, len(rawmac), 2))
-
-
-    def _get_vm_list(self):
-        """ Return a list of vms. """
-        # Filter out vms we dont want to delete.
-        exclude_list = ['"Dib-Raring"']
-        return_list=[]
-        stdin, stdout, stderr = self.conn.exec_command("VBoxManage list vms")
-        raw_list = stdout.read().split()
-        for vm_name in raw_list:
-            if vm_name[0] == '{':
-                # for our needs skip uuid
-                continue
-            found_in_exclude = False
-            for exclude_vm in exclude_list:
-                if vm_name in exclude_vm:
-                    found_in_exclude = True
-                    break
-            if found_in_exclude:
-                continue
-            return_list.append(vm_name)
-        return return_list
-
 
     def __call__(self, parser, params, values, option_string=None, **kwargs):
         """Triggered by -c command line argument """
@@ -78,9 +48,8 @@ class actions(argparse.Action):
 
         self._print(self.params, verbose=True)
 
-        self.conn=paramiko.SSHClient()
-        self.conn.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.conn.connect(self.hostname, port=self.port, username=self.username, password=self.password, key_filename=self.keyfilename)
+        self.conn=libvirt.open(self.params.qemu)
+
         # action function mapping
         actions = { 'create-vm' : self.create_vms,
                     'destroy-vm' : self.destroy_vms,
@@ -99,7 +68,6 @@ class actions(argparse.Action):
             if command in actions:
                 actions[command]()
 
-
     def _print(self, output, verbose=False):
         """ print wrapper so -v and -s can be respected """
         if not self.params.silent:
@@ -112,20 +80,19 @@ class actions(argparse.Action):
     def get_macs(self):
         """ This returns the mac addresses  xx:xx:xx,yy:yy:yy aa:aa:aa,bb:bb:bb """
         output=''
-        vm_list = self._get_vm_list()
+        domains=self.conn.listDefinedDomains()
 
-        for vm in vm_list:
-            VBoxCommand = "VBoxManage showvminfo %s --machinereadable | grep macaddress" % vm
-            stdin, stdout, stderr = self.conn.exec_command(VBoxCommand)
-            macaddList= stdout.read().split()
-            for macaddress in macaddList:
-                tmp, rawmac = macaddress.split('=')
-                mac = rawmac.replace('"','')
-                finishedMac = self._format_mac(mac)
-                if output:
-                    output += ","
-                output += "%s" % finishedMac
-            output += " "
+        for domain in domains:
+            if not domain.find(self.params.prefix) == -1:
+               _xml = objectify.fromstring(self.conn.lookupByName(domain).XMLDesc(0))
+
+               output += "%s" % _xml.devices.interface[0].mac.attrib.get("address")
+               try:
+                  output += ",%s " % _xml.devices.interface[1].mac.attrib.get("address")
+               except IndexError:
+                  output += " "
+
+
         print '%s' % output.strip(' ')
 
 
@@ -244,23 +211,25 @@ class actions(argparse.Action):
         """ clears out vms """
         self._print('Deleting VMs')
 
-        vm_list = self._get_vm_list()
+        for domain in self.conn.listDefinedDomains():
+            if not domain.find(self.params.prefix) == -1:
+                dom = self.conn.lookupByName(domain)
+                self._print("Found %s, deleting it" % domain)
+                if dom.isActive():
+                    dom.destroy()
+                dom.undefine()
 
-        for vm in vm_list:
-            self._print("Found %s, deleting it" % vm)
-            cmd = "VBoxManage unregistervm %s --delete" % vm
-            print "Running: %s" % cmd
-            stdin, stdout, stderr = self.conn.exec_command(cmd)
-            print "Got: %s" % stdout.read()
-
-        #self._print("Deleting disk images from %s" % self.params.image_path)
-        #cmd = "rm -rf %s*" % self.params.image_path
-        #call(cmd, shell=True)
+        self._print("Deleting disk images from %s" % self.params.image_path)
+        cmd = "rm -rf %s*" % self.params.image_path
+        call(cmd, shell=True)
 
     def user_exist(self, user):
-        # for vbox we using ssh. so we know the user is there
-        return True
-        
+        try:
+            pwd.getpwnam(user)
+            return True
+        except KeyError:
+            return False
+
     def create_vms(self):
         """ creates the first vm """
         self._print('create called')
@@ -270,59 +239,29 @@ class actions(argparse.Action):
 
         for i in range(self.params.vms):
             name = "%s%s" % (self.params.prefix , str(i))
-            image = "%s%s.vdi" % (self.params.image_path, name)
+            image = "%s%s.img" % (self.params.image_path, name)
+            call("sudo rm -f %s" % image, shell=True)
+            cmd = "qemu-img create -f raw %s %s" % (image, self.params.disk_size)
+            call(cmd, shell=True)
 
-            print "Delete VBox vm: %s with disk: %s if it exists" % (name, image)
-            stdin, stdout, stderr = self.conn.exec_command("VBoxManage unregistervm %s --delete" % name)
-            cmd = "VBoxManage createhd --format VDI --filename %s --size %s" % (image, self.params.disk_size)
-            print "Running: %s" % cmd
-            stdin, stdout, stderr = self.conn.exec_command(cmd)
-            print "Got: %s" % stdout.read()
-            # now create the vm
-            cmd = "VBoxManage createhd --format VDI --filename %s --size %s" % (image, self.params.disk_size)
-            print "Running: %s" % cmd
-            stdin, stdout, stderr = self.conn.exec_command(cmd)
-            print "Got: %s" % stdout.read()
+            self.conn.defineXML(self.load_xml(name,image))
 
-            cmd = "VBoxManage createvm "\
-                "--ostype Ubuntu_64 " \
-                "--register " \
-                "--name %s" % name
-            print "Running: %s" % cmd
-            stdin, stdout, stderr = self.conn.exec_command(cmd)
-            print "Got: %s" % stdout.read()
+        self._print('Fixing permissions and ownership', verbose=True)
+        cmd = 'chmod 644 %s*' % self.params.image_path
+        return_code = call(cmd, shell=True)
 
-            cmd = "VBoxManage storagectl %s " \
-                "--name SATA " \
-                "--add sata " \
-                "--controller IntelAHCI" % name
-            print "Running: %s" % cmd
-            stdin, stdout, stderr = self.conn.exec_command(cmd)
-            print "Got: %s" % stdout.read()
+        qemu_user=""
+        if self.user_exist("libvirt-qemu"): # Debian
+            qemu_user="libvirt-qemu"
+        if self.user_exist("qemu"): # RedHat
+            qemu_user="qemu"
+        else:
+            self._print("WARNING: QEMU user not found.")
 
-            cmd = "VBoxManage storageattach %s " \
-                "--storagectl SATA " \
-                "--port 0 " \
-                "--device 0 " \
-                "--type hdd " \
-                "--medium %s" % (name, image)
-            print "Running: %s" % cmd
-            stdin, stdout, stderr = self.conn.exec_command(cmd)
-            print "Got: %s" % stdout.read()
+        if qemu_user:
+            cmd = 'sudo chown %s %s*' % (qemu_user, self.params.image_path)
+            call(cmd, shell=True)
 
-            cmd = "VBoxManage modifyvm %s " \
-                "--boot1 net " \
-                "--boot2 none " \
-                "--boot3 none " \
-                "--boot4 none " \
-                "--memory 1024" \
-                "--cpus 1 " \
-                "--intnet1 pxelan" \
-                "--nic1 intnet " \
-                "--macaddress1 auto " % (name)
-            print "Running: %s" % cmd
-            stdin, stdout, stderr = self.conn.exec_command(cmd)
-            print "Got: %s" % stdout.read()
         self._print('%s vms have been created!' % str(self.params.vms))
 
 
