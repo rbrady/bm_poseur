@@ -19,8 +19,8 @@ import argparse
 import os.path
 import sys
 from textwrap import dedent
-from lib.settings import settings
-from lib.actions import actions
+from bm_poseur.settings import settings
+from bm_poseur.actions import actions
 
 basedir = os.path.dirname(__file__)
 
@@ -28,7 +28,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
         description=dedent("""\
                             This is a CLI utility to provide devstack with virtualized resources
-                            so that the baremetal hypervisor can be exercised, without having
+                            so that the bm_poseur hypervisor can be exercised, without having
                             actual physical hardware available.
 
 
@@ -54,7 +54,7 @@ def main():
                     Usage:
 
                     BareMetal Bridge:
-                    Configure access to the virtual baremetal LAN for the bootstrap VM.
+                    Configure access to the virtual bm_poseur LAN for the bootstrap VM.
                     The default will do nothing and error, as changing your machine
                     config can be considered unfriendly. Passing -y will trigger the
                     demo mode where a local bridge called 'br999' with no external
