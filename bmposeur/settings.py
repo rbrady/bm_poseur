@@ -31,7 +31,7 @@ class settings(object):
     
     QEMU = "qemu:///system"
     PREFIX = 'baremetal_'
-    IMAGE_PATH = '/opt/stack/data/bm_poseur/'
+    IMAGE_PATH = '/opt/stack/data/bmposeur/'
     DISK_SIZE = "20G"
     START_DELAY = 2
     TEMPLATE_XML = "%s/template.xml" % os.path.dirname(os.path.abspath(__file__))
